@@ -16,6 +16,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rmw_implementation_cmake REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 # find ROS 1 packages
 set(cmake_extras_files cmake/find_ros1_package.cmake cmake/find_ros1_interface_packages.cmake)
@@ -136,7 +137,7 @@ if(NOT WIN32)
     PROPERTIES COMPILE_FLAGS "-Wno-unused-parameter")
 endif()
 
-include_directories(include ${generated_path})
+include_directories(include ${generated_path} ${YAML_CPP_INCLUDE_DIR})
 
 function(custom_executable target)
   cmake_parse_arguments(
@@ -193,7 +194,8 @@ custom_executable(static_bridge
   ROS1_DEPENDENCIES
   TARGET_DEPENDENCIES ${ros2_interface_packages})
 target_link_libraries(static_bridge
-  ${PROJECT_NAME})
+  ${PROJECT_NAME}
+  ${YAML_CPP_LIBRARIES})
 
 custom_executable(parameter_bridge
   "src/parameter_bridge.cpp"

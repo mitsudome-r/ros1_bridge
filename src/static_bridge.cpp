@@ -24,11 +24,46 @@
 # pragma clang diagnostic pop
 #endif
 
+#include <yaml-cpp/yaml.h>
+
 // include ROS 2
 #include "rclcpp/rclcpp.hpp"
 
 #include "ros1_bridge/bridge.hpp"
 
+struct Topic{
+  std::string name;
+  std::string ros1_type;
+  std::string ros2_type;
+};
+
+std::ostream& operator<<(std::ostream& os, const Topic& topic)
+{
+    std::cout << "name: " << topic.name << std::endl
+              << "ROS1: " << topic.ros1_type << std::endl
+              << "ROS2: " << topic.ros2_type << std::endl;
+  return os;
+}
+
+std::vector<Topic> loadYAMLFile(std::string yaml_path){
+
+  std::vector<Topic> topics;
+
+  YAML::Node config = YAML::LoadFile(yaml_path);
+
+  for (std::size_t i = 0; i < config["topics"].size(); i++)
+  {
+    const auto topic_dict = config["topics"][i];
+    Topic topic;
+    topic.name = topic_dict["name"].as<std::string>();
+    topic.ros1_type = topic_dict["ros1_type"].as<std::string>();
+    topic.ros2_type = topic_dict["ros2_type"].as<std::string>();
+    topics.push_back(topic);
+    std::cout << topic << std::endl;
+  }
+
+  return topics;
+}
 
 int main(int argc, char * argv[])
 {
@@ -40,14 +75,22 @@ int main(int argc, char * argv[])
   rclcpp::init(argc, argv);
   auto ros2_node = rclcpp::Node::make_shared("ros_bridge");
 
-  // bridge one example topic
-  std::string topic_name = "chatter";
-  std::string ros1_type_name = "std_msgs/String";
-  std::string ros2_type_name = "std_msgs/msg/String";
-  size_t queue_size = 10;
+  std::string yaml_file = ros2_node->declare_parameter("yaml_file").get<std::string>();
+  const auto topics = loadYAMLFile(yaml_file);
 
-  auto handles = ros1_bridge::create_bidirectional_bridge(
-    ros1_node, ros2_node, ros1_type_name, ros2_type_name, topic_name, queue_size);
+  std::vector<ros1_bridge::BridgeHandles> handles;
+  for (const auto & topic : topics)
+  {
+    // bridge one example topic
+    const std::string & topic_name = topic.name;
+    const std::string & ros1_type_name = topic.ros1_type;
+    const std::string & ros2_type_name = topic.ros2_type;
+    size_t queue_size = 10;
+
+    auto handle = ros1_bridge::create_bidirectional_bridge(
+      ros1_node, ros2_node, ros1_type_name, ros2_type_name, topic_name, queue_size);
+    handles.push_back(handle);
+  }
 
   // ROS 1 asynchronous spinner
   ros::AsyncSpinner async_spinner(1);
